@@ -6,25 +6,27 @@
   padding: 0 12px;
 }
 
+/* Constrain major surfaces so they remain centered on wide screens */
+.header,
+.add-todo,
+.filter-bar,
+.calendar,
+.todo-list {
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 /* ─── Cute Doll ──────────────────────────────────────────── */
 /*
   The doll sits ON the task bar, overlapping the top edge.
   Since we use cute_doll.png, the background is fully transparent.
 */
 .doll {
-  .header,
-  .add-todo,
-  .filter-bar,
-  .calendar,
-  .todo-list {
-    max-width: 1100px;
-    margin-left: auto;
-    margin-right: auto;
-  }
   position: absolute;
-  right: 24px;
-  bottom: calc(100% - 42px);     /* pulled down further to offset transparent margins in the image */
-  height: 90px;
+  right: 20px;
+  bottom: calc(100% - 30px);     /* pull doll closer to add button */
+  height: 76px;
   width: auto;
   object-fit: contain;
   pointer-events: none;
@@ -91,7 +93,7 @@
   gap: 16px;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 10px 20px;
+  padding: 18px 28px;
 }
 
 .header__content {
@@ -101,7 +103,7 @@
 }
 
 .header__title {
-  font-size: clamp(1.35rem, 3vw, 1.9rem);
+  font-size: clamp(1.6rem, 3.5vw, 2.6rem);
   font-weight: 700;
   letter-spacing: -0.5px;
   background: linear-gradient(135deg, var(--color-text) 20%, var(--color-text-2) 100%);
@@ -233,6 +235,25 @@ body.dark-theme .header::before {
 
 .add-todo__select:focus {
   border-color: var(--color-accent);
+}
+
+/* Desktop: compact form with input left, controls right */
+@media (min-width: 900px) {
+  .add-todo__main {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .add-todo__meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .add-todo__select { order: 2; }
+  .add-todo__btn { order: 3; }
 }
 
 .add-todo__btn {
