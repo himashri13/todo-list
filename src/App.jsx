@@ -5,6 +5,7 @@ import Header from './components/Header';
 import AddTodo from './components/AddTodo';
 import FilterBar from './components/FilterBar';
 import TodoList from './components/TodoList';
+import CalendarView from './components/CalendarView';
 
 /* ─── Seed data shown on first load ─────────────────────── */
 const SEED_TODOS = [
@@ -18,6 +19,7 @@ function normalizeTodo(todo) {
     ...todo,
     dueDate: todo.dueDate || '',
     reminder: todo.reminder || '',
+    notified: todo.notified || false,
   };
 }
 
@@ -43,9 +45,49 @@ export default function App() {
   const [todos, setTodos] = useState(loadTodos);
   const [filter, setFilter] = useState('all');
   const [theme, setTheme] = useState(loadTheme);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const timersRef = new Map();
 
   useEffect(() => {
     localStorage.setItem('todos', JSON.stringify(todos));
+  }, [todos]);
+
+  // Request notification permission and schedule reminders for todos
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Clear existing timers
+    timersRef.forEach((t) => clearTimeout(t));
+    timersRef.clear();
+
+    const now = Date.now();
+    todos.forEach((todo) => {
+      if (!todo.reminder || todo.notified) return;
+      const when = new Date(todo.reminder).getTime();
+      if (Number.isNaN(when)) return;
+      const delay = when - now;
+      if (delay <= 0) return; // past
+      const id = setTimeout(() => {
+        if (Notification.permission === 'granted') {
+          try {
+            new Notification('Todo reminder', {
+              body: todo.text,
+            });
+          } catch (e) {
+            // ignore
+          }
+        }
+        // mark as notified so we don't repeat
+        setTodos((prev) => prev.map((t) => t.id === todo.id ? { ...t, notified: true } : t));
+      }, delay);
+      timersRef.set(todo.id, id);
+    });
+    return () => {
+      timersRef.forEach((t) => clearTimeout(t));
+      timersRef.clear();
+    };
   }, [todos]);
 
   useEffect(() => {
@@ -55,7 +97,7 @@ export default function App() {
 
   function addTodo(text, priority, dueDate, reminder) {
     setTodos((prev) => [
-      { id: crypto.randomUUID(), text, completed: false, priority, dueDate, reminder },
+      { id: crypto.randomUUID(), text, completed: false, priority, dueDate, reminder, notified: false },
       ...prev,
     ]);
   }
@@ -96,9 +138,11 @@ export default function App() {
         remaining={remaining}
         theme={theme}
         onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
+        onToggleCalendar={() => setCalendarOpen((v) => !v)}
       />
       <AddTodo onAdd={addTodo} />
       <FilterBar current={filter} onChange={setFilter} />
+      {calendarOpen && <CalendarView todos={todos} />}
       <TodoList
         todos={filteredTodos}
         onToggle={toggleTodo}
