@@ -12,6 +12,15 @@
   Since we use cute_doll.png, the background is fully transparent.
 */
 .doll {
+  .header,
+  .add-todo,
+  .filter-bar,
+  .calendar,
+  .todo-list {
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+  }
   position: absolute;
   right: 24px;
   bottom: calc(100% - 42px);     /* pulled down further to offset transparent margins in the image */
