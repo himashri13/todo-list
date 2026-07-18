@@ -73,6 +73,24 @@ body.dark-theme {
   --shadow-drag: 0 24px 64px rgba(0,0,0,.7);
 }
 
+/* Make dark theme cover the entire viewport and hide the light background image */
+body.dark-theme {
+  background-image: none;
+  background-color: #07110c;
+  background-attachment: scroll;
+}
+
+/* Dark overlay for the page to ensure surfaces read well */
+body.dark-theme::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.75) 100%);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* ─── Reset ─────────────────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -108,6 +126,12 @@ body::before {
   z-index: 0;
 }
 
+/* Override the light overlay when dark theme is active */
+body.dark-theme::before {
+  background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.78) 100%);
+  backdrop-filter: blur(2px);
+}
+
 #root { position: relative; z-index: 1; }
 
 button {
@@ -129,8 +153,8 @@ ul, ol { list-style: none; }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 48px 16px 80px;
+  align-items: stretch;
+  padding: 24px 12px 48px;
 }
 
 @media (max-width: 640px) {
