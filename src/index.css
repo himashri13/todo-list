@@ -131,3 +131,15 @@ ul, ol { list-style: none; }
   align-items: center;
   padding: 48px 16px 80px;
 }
+
+@media (max-width: 640px) {
+  #root {
+    padding: 24px 12px 64px;
+  }
+}
+
+@media (max-width: 480px) {
+  #root {
+    padding: 16px 10px 48px;
+  }
+}
