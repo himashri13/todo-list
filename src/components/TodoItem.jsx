@@ -2,6 +2,18 @@ import { useState, useRef, useEffect } from 'react';
 
 const PRIORITY_LABELS = { low: 'Low', medium: 'Med', high: 'High' };
 
+function formatDate(dateValue) {
+  if (!dateValue) return '';
+  const date = new Date(dateValue);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function formatReminder(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 export default function TodoItem({
   todo,
   onToggle,
@@ -10,14 +22,18 @@ export default function TodoItem({
   onDragStart,
   onDragEnter,
   onDragEnd,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
   isDragging,
   isDragOver,
+  isTouchDragging,
+  index,
 }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
   const inputRef = useRef(null);
 
-  // Focus the input whenever we enter edit mode
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
@@ -39,29 +55,36 @@ export default function TodoItem({
   const itemClass = [
     'todo-item',
     todo.completed ? 'todo-item--completed' : '',
-    isDragging    ? 'todo-item--dragging'  : '',
-    isDragOver    ? 'todo-item--drag-over' : '',
+    isDragging ? 'todo-item--dragging' : '',
+    isDragOver ? 'todo-item--drag-over' : '',
+    isTouchDragging ? 'todo-item--touch-dragging' : '',
   ].filter(Boolean).join(' ');
+
+  const dueLabel = formatDate(todo.dueDate);
+  const reminderLabel = formatReminder(todo.reminder);
 
   return (
     <li
       className={itemClass}
       draggable
+      data-todo-index={index}
       onDragStart={onDragStart}
       onDragEnter={onDragEnter}
       onDragEnd={onDragEnd}
       onDragOver={(e) => e.preventDefault()}
     >
-      {/* Drag handle */}
       <span
         className="todo-item__handle"
         aria-label="Drag to reorder"
         title="Drag to reorder"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
       >
         <DragIcon />
       </span>
 
-      {/* Checkbox */}
       <button
         id={`toggle-${todo.id}`}
         className={`todo-item__checkbox${todo.completed ? ' todo-item__checkbox--checked' : ''}`}
@@ -73,7 +96,6 @@ export default function TodoItem({
         {todo.completed && <span className="todo-item__checkbox-icon">✓</span>}
       </button>
 
-      {/* Text / Edit input */}
       <div className="todo-item__body">
         {editing ? (
           <input
@@ -86,22 +108,29 @@ export default function TodoItem({
             aria-label="Edit task"
           />
         ) : (
-          <span
-            className={`todo-item__text${todo.completed ? ' todo-item__text--done' : ''}`}
-            onDoubleClick={() => !todo.completed && setEditing(true)}
-            title="Double-click to edit"
-          >
-            {todo.text}
-          </span>
+          <>
+            <span
+              className={`todo-item__text${todo.completed ? ' todo-item__text--done' : ''}`}
+              onDoubleClick={() => !todo.completed && setEditing(true)}
+              title="Double-click to edit"
+            >
+              {todo.text}
+            </span>
+
+            {(dueLabel || reminderLabel) && (
+              <div className="todo-item__meta">
+                {dueLabel && <span className="todo-item__meta-chip">📅 {dueLabel}</span>}
+                {reminderLabel && <span className="todo-item__meta-chip">🔔 {reminderLabel}</span>}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Priority badge */}
       <span className={`priority-badge priority-badge--${todo.priority}`}>
         {PRIORITY_LABELS[todo.priority]}
       </span>
 
-      {/* Delete */}
       <button
         id={`delete-${todo.id}`}
         className="todo-item__delete"
@@ -115,28 +144,26 @@ export default function TodoItem({
   );
 }
 
-/* ── Inline SVG icons (no extra deps) ── */
 function DragIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <circle cx="4.5" cy="2.5" r="1.2" fill="currentColor"/>
-      <circle cx="9.5" cy="2.5" r="1.2" fill="currentColor"/>
-      <circle cx="4.5" cy="7"   r="1.2" fill="currentColor"/>
-      <circle cx="9.5" cy="7"   r="1.2" fill="currentColor"/>
-      <circle cx="4.5" cy="11.5" r="1.2" fill="currentColor"/>
-      <circle cx="9.5" cy="11.5" r="1.2" fill="currentColor"/>
+      <circle cx="4.5" cy="2.5" r="1.2" fill="currentColor" />
+      <circle cx="9.5" cy="2.5" r="1.2" fill="currentColor" />
+      <circle cx="4.5" cy="7" r="1.2" fill="currentColor" />
+      <circle cx="9.5" cy="7" r="1.2" fill="currentColor" />
+      <circle cx="4.5" cy="11.5" r="1.2" fill="currentColor" />
+      <circle cx="9.5" cy="11.5" r="1.2" fill="currentColor" />
     </svg>
   );
 }
 
 function TrashIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-         strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6"/>
-      <path d="M19 6l-1 14H6L5 6"/>
-      <path d="M10 11v6M14 11v6"/>
-      <path d="M9 6V4h6v2"/>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4h6v2" />
     </svg>
   );
 }

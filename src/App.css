@@ -1,6 +1,7 @@
 /* ─── App Layout ─────────────────────────────────────────── */
 .app {
   width: min(100%, 760px);
+  max-width: calc(100vw - 24px);
   margin: 0 auto;
 }
 
@@ -44,6 +45,12 @@
   backdrop-filter: blur(14px);
 }
 
+.header__content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .header__title {
   font-size: clamp(1.35rem, 3vw, 1.9rem);
   font-weight: 700;
@@ -65,22 +72,39 @@
   white-space: nowrap;
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(8px);
+  align-self: flex-start;
+}
+
+.theme-toggle {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 /* ─── Add Todo Form ──────────────────────────────────────── */
 .add-todo {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   margin-bottom: 16px;
   background: var(--color-surface);
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 10px 10px 10px 16px;
+  padding: 12px 12px 14px;
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(14px);
   transition: box-shadow var(--transition), border-color var(--transition);
   position: relative;
+}
+
+.add-todo__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -133,6 +157,31 @@
   border-radius: var(--radius-md);
   transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
   white-space: nowrap;
+}
+
+.add-todo__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.add-todo__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--color-text-2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  flex: 1 1 180px;
+}
+
+.add-todo__field input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 7px 8px;
+  background: var(--color-surface-2);
+  color: var(--color-text);
 }
 
 .add-todo__btn:hover {
@@ -273,6 +322,11 @@
   box-shadow: 0 0 0 2px var(--color-accent-light), var(--shadow-md);
 }
 
+.todo-item--touch-dragging {
+  transform: scale(1.01);
+  box-shadow: var(--shadow-drag);
+}
+
 /* Drag handle */
 .todo-item__handle {
   display: flex;
@@ -283,6 +337,7 @@
   border-radius: 4px;
   transition: color var(--transition);
   flex-shrink: 0;
+  touch-action: none;
 }
 
 .todo-item__handle:hover { color: var(--color-text-2); }
@@ -332,6 +387,26 @@
   cursor: text;
   word-break: break-word;
   transition: color var(--transition);
+}
+
+.todo-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.todo-item__meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text-2);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 3px 8px;
 }
 
 .todo-item__text--done {
@@ -434,6 +509,10 @@
     padding: 12px;
   }
 
+  .add-todo__main {
+    gap: 8px;
+  }
+
   .add-todo__input {
     order: 1;
     flex-basis: 100%;
@@ -464,5 +543,24 @@
 
   .header__meta {
     align-self: flex-start;
+  }
+
+  .theme-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .add-todo__meta {
+    flex-direction: column;
+  }
+
+  .todo-item {
+    padding: 10px;
+  }
+
+  .todo-item__meta {
+    flex-direction: column;
   }
 }
