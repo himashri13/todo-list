@@ -118,7 +118,7 @@ export default function KanbanBoard({
                       <p className="text-xs text-slate-400">No tasks in this column</p>
                     </motion.div>
                   ) : (
-                    colTasks.map((todo) => {
+                    colTasks.map((todo, index) => {
                       const categoryObj = CATEGORIES.find((c) => c.id === todo.category) || CATEGORIES[5];
                       const { completed: subDone, total: subTotal } = getSubtaskProgress(todo.subtasks);
 
@@ -129,7 +129,7 @@ export default function KanbanBoard({
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.9 }}
-                          transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                          transition={{ type: 'spring', stiffness: 350, damping: 25, delay: Math.min(index * 0.05, 0.3) }}
                           draggable
                           onDragStart={(e) => handleDragStart(e, todo.id)}
                           className="p-4 rounded-xl border hover:border-indigo-500/40 transition-all shadow-sm group hover:shadow-md backdrop-blur-xl bg-white/85 dark:bg-slate-900/85 border-slate-200/80 dark:border-slate-700/80 cursor-grab active:cursor-grabbing"

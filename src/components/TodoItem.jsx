@@ -81,7 +81,7 @@ export default function TodoItem({
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.2, delay: Math.min(index * 0.05, 0.3) }}
       draggable
       data-todo-index={index}
       onDragStart={onDragStart}
