@@ -1,89 +1,73 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { SearchX } from 'lucide-react';
 import TodoItem from './TodoItem';
 
-export default function TodoList({ todos, onToggle, onDelete, onEdit, onReorder }) {
-  const dragIndex = useRef(null);
-  const [draggingId, setDraggingId] = useState(null);
-  const [dragOverId, setDragOverId] = useState(null);
-  const [touchDraggingId, setTouchDraggingId] = useState(null);
-  const touchIndexRef = useRef(null);
+export default function TodoList({
+  todos,
+  onToggle,
+  onDelete,
+  onEdit,
+  onOpenTaskModal,
+  onReorder,
+}) {
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
 
-  function handleDragStart(index, id) {
-    dragIndex.current = index;
-    setDraggingId(id);
+  function handleDragStart(e, index) {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
   }
 
   function handleDragEnter(index) {
-    if (dragIndex.current === null || dragIndex.current === index) return;
-    onReorder(dragIndex.current, index);
-    dragIndex.current = index;
-  }
-
-  function handleDragEnd() {
-    setDraggingId(null);
-    setDragOverId(null);
-    dragIndex.current = null;
-  }
-
-  function handleTouchStart(index, id, e) {
-    e.preventDefault();
-    touchIndexRef.current = index;
-    setTouchDraggingId(id);
-  }
-
-  function handleTouchMove(index, e) {
-    if (touchIndexRef.current === null) return;
-    const touch = e.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-    const targetItem = element?.closest('[data-todo-index]');
-    if (!targetItem) return;
-
-    const targetIndex = Number(targetItem.dataset.todoIndex);
-    if (!Number.isNaN(targetIndex) && targetIndex !== touchIndexRef.current && targetIndex >= 0 && targetIndex < todos.length) {
-      onReorder(touchIndexRef.current, targetIndex);
-      touchIndexRef.current = targetIndex;
+    if (index !== draggedIndex) {
+      setDragOverIndex(index);
     }
   }
 
-  function handleTouchEnd() {
-    setTouchDraggingId(null);
-    touchIndexRef.current = null;
+  function handleDragEnd() {
+    if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
+      onReorder(draggedIndex, dragOverIndex);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   }
 
   if (todos.length === 0) {
     return (
-      <div className="todo-list__empty" role="status">
-        <div className="todo-list__empty-icon">✦</div>
-        <p className="todo-list__empty-text">No tasks here</p>
-        <p className="todo-list__empty-sub">Add one above to get started</p>
+      <div className="p-12 rounded-3xl border border-slate-200/80 dark:border-slate-700/80 text-center space-y-3 backdrop-blur-xl bg-white/90 dark:bg-slate-900/90 shadow-md">
+        <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+          <SearchX className="w-7 h-7" />
+        </div>
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No tasks found</h3>
+        <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          No tasks match your current filter or search criteria. Try clearing filters or adding a new task!
+        </p>
       </div>
     );
   }
 
   return (
-    <ul className="todo-list" aria-label="Task list">
-      {todos.map((todo, index) => (
-        <TodoItem
-          key={todo.id}
-          todo={todo}
-          index={index}
-          onToggle={onToggle}
-          onDelete={onDelete}
-          onEdit={onEdit}
-          isDragging={draggingId === todo.id}
-          isDragOver={dragOverId === todo.id}
-          isTouchDragging={touchDraggingId === todo.id}
-          onDragStart={() => handleDragStart(index, todo.id)}
-          onDragEnter={() => {
-            setDragOverId(todo.id);
-            handleDragEnter(index);
-          }}
-          onDragEnd={handleDragEnd}
-          onTouchStart={(e) => handleTouchStart(index, todo.id, e)}
-          onTouchMove={(e) => handleTouchMove(index, e)}
-          onTouchEnd={handleTouchEnd}
-        />
-      ))}
+    <ul className="space-y-3">
+      <AnimatePresence mode="popLayout">
+        {todos.map((todo, index) => (
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              index={index}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              onEdit={onEdit}
+              onOpenTaskModal={onOpenTaskModal}
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragEnter={() => handleDragEnter(index)}
+              onDragEnd={handleDragEnd}
+              isDragging={draggedIndex === index}
+              isDragOver={dragOverIndex === index}
+            />
+        ))}
+      </AnimatePresence>
     </ul>
   );
 }

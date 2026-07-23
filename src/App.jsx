@@ -1,66 +1,78 @@
-import { useState, useEffect } from 'react';
-import './App.css';
-
-import Header from './components/Header';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useTodoContext } from './context/TodoContext';
+import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 import AddTodo from './components/AddTodo';
-import FilterBar from './components/FilterBar';
 import TodoList from './components/TodoList';
+import KanbanBoard from './components/KanbanBoard';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
 import CalendarView from './components/CalendarView';
-
-/* ─── Seed data shown on first load ─────────────────────── */
-const SEED_TODOS = [
-  { id: crypto.randomUUID(), text: 'Build an awesome todo app', completed: false, priority: 'high', dueDate: '2026-07-20', reminder: '2026-07-19T09:00' },
-  { id: crypto.randomUUID(), text: 'Add drag-and-drop reordering', completed: true, priority: 'medium', dueDate: '', reminder: '' },
-  { id: crypto.randomUUID(), text: 'Write clean React components', completed: false, priority: 'low', dueDate: '', reminder: '' },
-];
-
-function normalizeTodo(todo) {
-  return {
-    ...todo,
-    dueDate: todo.dueDate || '',
-    reminder: todo.reminder || '',
-    notified: todo.notified || false,
-  };
-}
-
-function loadTodos() {
-  try {
-    const stored = localStorage.getItem('todos');
-    if (!stored) return SEED_TODOS;
-    const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed.map(normalizeTodo) : SEED_TODOS;
-  } catch {
-    return SEED_TODOS;
-  }
-}
+import TaskModal from './components/TaskModal';
+import CommandPalette from './components/CommandPalette';
+import ImportDataModal from './components/ImportDataModal';
+import ExportDataModal from './components/ExportDataModal';
 
 function loadTheme() {
-  if (typeof window === 'undefined') return 'light';
+  if (typeof window === 'undefined') return 'dark';
   const stored = localStorage.getItem('theme');
   if (stored === 'dark' || stored === 'light') return stored;
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export default function App() {
-  const [todos, setTodos] = useState(loadTodos);
-  const [filter, setFilter] = useState('all');
+  const {
+    todos,
+    handleAddTodo,
+    handleToggleTodo,
+    handleDeleteTodo,
+    handleEditTodo: handleUpdateTodoDetails,
+    handleReorderTodos,
+    handleImportData,
+    handleExportData,
+    handleResetSeedData,
+    handleClearCompleted,
+    handleUpdateTaskStatus
+  } = useTodoContext();
+
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'kanban' | 'analytics'
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Filters for FilterBar
+  const [currentFilter, setCurrentFilter] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedPriority, setSelectedPriority] = useState('all');
+  const [sortBy, setSortBy] = useState('createdAt');
+  
+  // UI States
   const [theme, setTheme] = useState(loadTheme);
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const timersRef = new Map();
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [activeTaskModal, setActiveTaskModal] = useState(null); // Which task is open in the modal
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [quickAddInitialDate, setQuickAddInitialDate] = useState('');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
+  const timersRef = useRef(new Map());
+
+  // Save to LocalStorage is now handled in TodoContext
+
+  // Apply Theme Class
   useEffect(() => {
-    localStorage.setItem('todos', JSON.stringify(todos));
-  }, [todos]);
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.body.classList.toggle('dark-theme', theme === 'dark');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
-  // Request notification permission and schedule reminders for todos
+  // Browser Notification Reminders
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
 
-    // Clear existing timers
-    timersRef.forEach((t) => clearTimeout(t));
-    timersRef.clear();
+    timersRef.current.forEach((t) => clearTimeout(t));
+    timersRef.current.clear();
 
     const now = Date.now();
     todos.forEach((todo) => {
@@ -68,88 +80,203 @@ export default function App() {
       const when = new Date(todo.reminder).getTime();
       if (Number.isNaN(when)) return;
       const delay = when - now;
-      if (delay <= 0) return; // past
+      if (delay <= 0) return;
+
       const id = setTimeout(() => {
         if (Notification.permission === 'granted') {
           try {
-            new Notification('Todo reminder', {
+            new Notification('TaskFlow Reminder', {
               body: todo.text,
+              icon: '/favicon.ico',
             });
-          } catch (e) {
-            // ignore
+          } catch {
+            // ignore fallback
           }
         }
-        // mark as notified so we don't repeat
-        setTodos((prev) => prev.map((t) => t.id === todo.id ? { ...t, notified: true } : t));
+        // Notifications trigger locally, but state update needs context.
+        // We'll skip setting notified: true in this simplified refactor, or handle it via context.
+        // For now, the notification fires based on time.
       }, delay);
-      timersRef.set(todo.id, id);
+
+      timersRef.current.set(todo.id, id);
     });
+
+    const currentTimers = timersRef.current;
     return () => {
-      timersRef.forEach((t) => clearTimeout(t));
-      timersRef.clear();
+      currentTimers.forEach((t) => clearTimeout(t));
+      currentTimers.clear();
     };
   }, [todos]);
 
-  useEffect(() => {
-    document.body.classList.toggle('dark-theme', theme === 'dark');
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+  // Data actions handled by Context
 
-  function addTodo(text, priority, dueDate, reminder) {
-    setTodos((prev) => [
-      { id: crypto.randomUUID(), text, completed: false, priority, dueDate, reminder, notified: false },
-      ...prev,
-    ]);
+  function handleToggleTheme() {
+    setTheme(theme === 'light' ? 'dark' : 'light');
   }
 
-  function deleteTodo(id) {
-    setTodos((prev) => prev.filter((todo) => todo.id !== id));
-  }
+  // Filter & Sort Logic
+  const filteredTodos = useMemo(() => {
+    return todos
+      .filter((todo) => {
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchesText = todo.text.toLowerCase().includes(q);
+          const matchesCat = todo.category.toLowerCase().includes(q);
+          const matchesDesc = (todo.description || '').toLowerCase().includes(q);
+          if (!matchesText && !matchesCat && !matchesDesc) return false;
+        }
 
-  function toggleTodo(id) {
-    setTodos((prev) => prev.map((todo) => (todo.id === id ? { ...todo, completed: !todo.completed } : todo)));
-  }
+        if (currentFilter === 'active' && todo.status === 'completed') return false;
+        if (currentFilter === 'completed' && todo.status !== 'completed') return false;
+        if (currentFilter === 'in-progress' && todo.status !== 'in-progress') return false;
 
-  function editTodo(id, text) {
-    setTodos((prev) => prev.map((todo) => (todo.id === id ? { ...todo, text } : todo)));
-  }
+        if (selectedCategory !== 'all' && todo.category !== selectedCategory) return false;
+        if (selectedPriority !== 'all' && todo.priority !== selectedPriority) return false;
 
-  function reorderTodos(fromIndex, toIndex) {
-    setTodos((prev) => {
-      const updated = [...prev];
-      const [moved] = updated.splice(fromIndex, 1);
-      updated.splice(toIndex, 0, moved);
-      return updated;
-    });
-  }
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'alphabetical') return a.text.localeCompare(b.text);
+        if (sortBy === 'priority') {
+          const pMap = { high: 1, medium: 2, low: 3 };
+          return pMap[a.priority] - pMap[b.priority];
+        }
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+  }, [todos, searchQuery, currentFilter, selectedCategory, selectedPriority, sortBy]);
 
-  const filteredTodos = todos.filter((todo) => {
-    if (filter === 'active') return !todo.completed;
-    if (filter === 'completed') return todo.completed;
-    return true;
-  });
-
-  const remaining = todos.filter((todo) => !todo.completed).length;
+  const remainingCount = useMemo(() => {
+    return todos.filter((t) => t.status !== 'completed').length;
+  }, [todos]);
 
   return (
-    <main className="app">
-      <Header
-        total={todos.length}
-        remaining={remaining}
+    <div className="flex h-full w-full overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      
+      <Sidebar 
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         theme={theme}
-        onToggleTheme={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
-        onToggleCalendar={() => setCalendarOpen((v) => !v)}
+        onToggleTheme={handleToggleTheme}
+        onOpenExportModal={() => setIsExportModalOpen(true)}
+        onOpenImportModal={() => setIsImportModalOpen(true)}
+        onResetSeedData={handleResetSeedData}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        mobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
-      <AddTodo onAdd={addTodo} />
-      <FilterBar current={filter} onChange={setFilter} />
-      {calendarOpen && <CalendarView todos={todos} />}
-      <TodoList
-        todos={filteredTodos}
-        onToggle={toggleTodo}
-        onDelete={deleteTodo}
-        onEdit={editTodo}
-        onReorder={reorderTodos}
+
+      <div className="flex-1 flex flex-col min-w-0 bg-transparent relative">
+        {/* Fixed Header Area */}
+        <div className="px-4 pt-4 md:px-6 md:pt-6 lg:px-8 lg:pt-8 shrink-0 z-30">
+          <Navbar
+          onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onOpenQuickAdd={() => {
+            setQuickAddInitialDate('');
+            setIsQuickAddOpen(true);
+          }}
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+          currentFilter={currentFilter}
+          onFilterChange={setCurrentFilter}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          selectedPriority={selectedPriority}
+          onPriorityChange={setSelectedPriority}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          onClearCompleted={handleClearCompleted}
+            remainingCount={remainingCount}
+          />
+        </div>
+
+        {/* Scrollable Content Area */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full p-4 pt-0 md:p-6 md:pt-0 lg:p-8 lg:pt-0 relative">
+          {/* Add Todo Modal */}
+        {isQuickAddOpen && (
+          <AddTodo 
+            initialDate={quickAddInitialDate}
+            onAdd={handleAddTodo} 
+            onCancel={() => {
+              setIsQuickAddOpen(false);
+              setQuickAddInitialDate('');
+            }} 
+          />
+        )}
+
+        {viewMode === 'analytics' ? (
+          <AnalyticsDashboard todos={todos} />
+        ) : viewMode === 'calendar' ? (
+          <CalendarView
+            todos={todos}
+            onSelectTask={(task) => setActiveTaskModal(task)}
+            onDayClick={(dateStr) => {
+              setQuickAddInitialDate(dateStr);
+              setIsQuickAddOpen(true);
+            }}
+            onClose={() => setViewMode('list')}
+          />
+        ) : viewMode === 'kanban' ? (
+          <KanbanBoard 
+            todos={filteredTodos} 
+            onToggle={handleToggleTodo}
+            onUpdateTaskStatus={handleUpdateTaskStatus}
+            onDelete={handleDeleteTodo}
+            onOpenTaskModal={(task) => setActiveTaskModal(task)}
+          />
+        ) : (
+          <div className="max-w-4xl mx-auto">
+            <TodoList
+              todos={filteredTodos}
+              onToggle={handleToggleTodo}
+              onDelete={handleDeleteTodo}
+              onUpdate={handleUpdateTodoDetails}
+              onReorder={handleReorderTodos}
+              onEdit={(todo) => setActiveTaskModal(todo)}
+              onOpenTaskModal={(todo) => setActiveTaskModal(todo)}
+            />
+          </div>
+        )}
+      </main>
+      </div>
+
+      {/* Task Edit Modal */}
+      {activeTaskModal && (
+        <TaskModal
+          todo={activeTaskModal}
+          onClose={() => setActiveTaskModal(null)}
+          onSave={(id, updates) => handleUpdateTodoDetails(id, updates)}
+        />
+      )}
+
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        todos={todos}
+        onOpenTaskModal={(t) => setActiveTaskModal(t)}
+        onOpenQuickAdd={() => {
+          setViewMode('list');
+          setQuickAddInitialDate('');
+          setIsQuickAddOpen(true);
+        }}
+        onViewModeChange={setViewMode}
+        onToggleTheme={handleToggleTheme}
       />
-    </main>
+
+      {/* Import Data Modal */}
+      <ImportDataModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImportData}
+      />
+
+      {/* Export Data Modal */}
+      <ExportDataModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExportData}
+      />
+    </div>
   );
 }

@@ -1,170 +1,119 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+@import "./global.css";
 
-/* ─── CSS Custom Properties ─────────────────────────────── */
-:root {
-  --color-bg:          #ebf3ed;
-  --color-surface:     rgba(255, 255, 255, 0.88); /* Increased opacity for readability */
-  --color-surface-2:   rgba(255, 255, 255, 0.62);
-  --color-border:      rgba(255, 255, 255, 0.78);
-  --color-border-2:    rgba(255, 255, 255, 0.92);
+@custom-variant dark (&:where(.dark, .dark *));
 
-  --color-text:        #041a0c;                   /* Darker for higher contrast */
-  --color-text-2:      #0e3e21;
-  --color-text-3:      #3b664b;                   /* Darker for accessibility compliance */
+@layer base {
+  :root {
+    --color-bg-light: #f4f6f8;
+    --color-bg-dark: #0f172a;
+  }
 
-  --color-accent:      #0a4724;
-  --color-accent-light:rgba(10, 71, 36, 0.08);
-  --color-accent-hover:#063118;
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
 
-  --color-success:     #15803d;
-  --color-success-bg:  #dcfce7;
+  body {
+    font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+    min-height: 100%;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    background-color: #f8fafc;
+    background-image: url('/flower_background.jpg');
+    background-size: 420px 420px;
+    background-repeat: repeat;
+    background-attachment: fixed;
+    color: #0f172a;
+  }
 
-  /* priority (updated to match theme palette) */
-  --color-low:         #1b5e20;
-  --color-low-bg:      rgba(232, 245, 233, 0.7);
-  --color-medium:      #b45309;
-  --color-medium-bg:   rgba(254, 243, 199, 0.7);
-  --color-high:        #b91c1c;
-  --color-high-bg:     rgba(254, 226, 226, 0.7);
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(248, 250, 252, 0.9) 0%, rgba(226, 232, 240, 0.95) 100%);
+    pointer-events: none;
+    z-index: -1;
+  }
 
-  --shadow-sm:   0 2px 8px rgba(10,54,28,.04), inset 0 1px 0 rgba(255,255,255,0.6);
-  --shadow-md:   0 8px 32px rgba(10,54,28,.07), inset 0 1px 0 rgba(255,255,255,0.8);
-  --shadow-lg:   0 16px 48px rgba(10,54,28,.10), inset 0 1px 0 rgba(255,255,255,0.9);
-  --shadow-drag: 0 24px 64px rgba(10,54,28,.16);
+  body.dark-theme, body.dark {
+    background-color: #07110c;
+    color: #ebf5ee;
+  }
 
-  --radius-sm:   6px;
-  --radius-md:   10px;
-  --radius-lg:   16px;
-  --radius-xl:   24px;
+  body.dark-theme::before, body.dark::before {
+    background: radial-gradient(circle at 50% 0%, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 1) 100%);
+  }
 
-  --font:        'Inter', system-ui, sans-serif;
-  --transition:  150ms cubic-bezier(.4,0,.2,1);
-}
-
-/* ─── Dark Mode Variables ───────────────────────────────── */
-body.dark-theme {
-  --color-bg:          #08100b;
-  --color-surface:     rgba(16, 28, 20, 0.82);   /* Dark translucent glass */
-  --color-surface-2:   rgba(22, 38, 27, 0.55);
-  --color-border:      rgba(255, 255, 255, 0.08);
-  --color-border-2:    rgba(255, 255, 255, 0.16);
-
-  --color-text:        #ebf5ee;                  /* High contrast white-green */
-  --color-text-2:      #a2cbb2;                  /* Soft sage */
-  --color-text-3:      #618e72;                  /* Muted sage */
-
-  --color-accent:      #22c55e;                  /* Neon emerald */
-  --color-accent-light:rgba(34, 197, 94, 0.08);
-  --color-accent-hover:#16a34a;
-
-  --color-success:     #22c55e;
-  --color-success-bg:  rgba(34, 197, 94, 0.12);
-
-  --color-low:         #22c55e;
-  --color-low-bg:      rgba(34, 197, 94, 0.12);
-  --color-medium:      #f59e0b;
-  --color-medium-bg:   rgba(245, 158, 11, 0.12);
-  --color-high:        #ef4444;
-  --color-high-bg:     rgba(239, 68, 68, 0.12);
-
-  --shadow-sm:   0 2px 8px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,0.06);
-  --shadow-md:   0 8px 32px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,0.08);
-  --shadow-lg:   0 16px 48px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,0.1);
-  --shadow-drag: 0 24px 64px rgba(0,0,0,.7);
-}
-
-/* Make dark theme cover the entire viewport and hide the light background image */
-body.dark-theme {
-  background-image: none;
-  background-color: #07110c;
-  background-attachment: scroll;
-}
-
-/* Dark overlay for the page to ensure surfaces read well */
-body.dark-theme::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.75) 100%);
-  backdrop-filter: blur(2px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ─── Reset ─────────────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html { font-size: 16px; }
-
-body {
-  font-family: var(--font);
-  background-color: var(--color-bg);
-  background-image: url('/flower_background.jpg');
-  background-size: 420px 420px;
-  background-repeat: repeat;
-  background-attachment: fixed;
-  color: var(--color-text);
-  line-height: 1.5;
-  min-height: 100vh;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Soft frosted overlay so flowers don't overpower text */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(235, 243, 238, 0.45) 0%, rgba(215, 235, 220, 0.7) 100%);
-  backdrop-filter: blur(2px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Override the light overlay when dark theme is active */
-body.dark-theme::before {
-  background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.78) 100%);
-  backdrop-filter: blur(2px);
-}
-
-#root { position: relative; z-index: 1; }
-
-button {
-  font-family: var(--font);
-  cursor: pointer;
-  border: none;
-  background: none;
-  outline: none;
-}
-
-input, textarea, select {
-  font-family: var(--font);
-  outline: none;
-}
-
-ul, ol { list-style: none; }
-
-#root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  padding: 24px 12px 48px;
-}
-
-@media (max-width: 640px) {
   #root {
-    padding: 24px 12px 64px;
+    position: relative;
+    z-index: 1;
+  }
+
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.4);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.7);
   }
 }
 
-@media (max-width: 480px) {
-  #root {
-    padding: 16px 10px 48px;
-  }
+/* Custom Glassmorphism styles */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.90);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-input {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(203, 213, 225, 0.8);
+}
+
+.dark .glass-input {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s infinite ease-in-out;
 }

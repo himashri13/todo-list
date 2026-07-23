@@ -1,33 +1,31 @@
 import { useState, useRef, useEffect } from 'react';
-
-const PRIORITY_LABELS = { low: 'Low', medium: 'Med', high: 'High' };
-
-function formatDate(dateValue) {
-  if (!dateValue) return '';
-  const date = new Date(dateValue);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-}
-
-function formatReminder(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-}
+import {
+  GripVertical,
+  CheckCircle2,
+  Circle,
+  Clock,
+  Calendar,
+  Bell,
+  Trash2,
+  Edit3,
+  CheckSquare,
+  AlertCircle,
+} from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { motion } from 'framer-motion';
+import { CATEGORIES, PRIORITIES, getSubtaskProgress } from '../types/todo';
 
 export default function TodoItem({
   todo,
   onToggle,
   onDelete,
   onEdit,
+  onOpenTaskModal,
   onDragStart,
   onDragEnter,
   onDragEnd,
-  onTouchStart,
-  onTouchMove,
-  onTouchEnd,
   isDragging,
   isDragOver,
-  isTouchDragging,
   index,
 }) {
   const [editing, setEditing] = useState(false);
@@ -37,6 +35,20 @@ export default function TodoItem({
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
+
+  function handleToggleClick(e) {
+    e.stopPropagation();
+    if (todo.status !== 'completed') {
+      // Trigger subtle celebration burst
+      confetti({
+        particleCount: 35,
+        spread: 60,
+        origin: { y: 0.8 },
+        colors: ['#6366f1', '#10b981', '#f59e0b'],
+      });
+    }
+    onToggle(todo.id);
+  }
 
   function handleEditSubmit() {
     const trimmed = editText.trim();
@@ -52,118 +64,164 @@ export default function TodoItem({
     }
   }
 
-  const itemClass = [
-    'todo-item',
-    todo.completed ? 'todo-item--completed' : '',
-    isDragging ? 'todo-item--dragging' : '',
-    isDragOver ? 'todo-item--drag-over' : '',
-    isTouchDragging ? 'todo-item--touch-dragging' : '',
-  ].filter(Boolean).join(' ');
+  const categoryObj = CATEGORIES.find((c) => c.id === todo.category) || CATEGORIES[5];
+  const priorityObj = PRIORITIES.find((p) => p.id === todo.priority) || PRIORITIES[1];
 
-  const dueLabel = formatDate(todo.dueDate);
-  const reminderLabel = formatReminder(todo.reminder);
+  const { completed: subDone, total: subTotal } = getSubtaskProgress(todo.subtasks);
+
+  // Overdue check
+  const isOverdue =
+    todo.dueDate &&
+    todo.status !== 'completed' &&
+    new Date(todo.dueDate).getTime() < new Date().setHours(0, 0, 0, 0);
 
   return (
-    <li
-      className={itemClass}
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.2 }}
       draggable
       data-todo-index={index}
       onDragStart={onDragStart}
       onDragEnter={onDragEnter}
       onDragEnd={onDragEnd}
       onDragOver={(e) => e.preventDefault()}
+      className={`group relative rounded-2xl border p-5 mb-3 transition-all duration-300 backdrop-blur-xl ${
+        todo.status === 'completed'
+          ? 'bg-slate-50/70 dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 shadow-sm' 
+          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/80 shadow-sm hover:shadow-md hover:border-indigo-500/30'
+      } ${isDragging ? 'opacity-40 scale-95 border-dashed border-indigo-500' : ''} ${
+        isDragOver ? 'ring-2 ring-indigo-500/50 scale-[1.01]' : ''
+      }`}
     >
-      <span
-        className="todo-item__handle"
-        aria-label="Drag to reorder"
-        title="Drag to reorder"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchEnd}
-      >
-        <DragIcon />
-      </span>
+      <div className="flex items-center gap-3">
+        {/* Drag handle */}
+        <span
+          className="cursor-grab active:cursor-grabbing text-slate-400/50 group-hover:text-slate-400 dark:text-slate-600 hover:!text-slate-600 transition-colors p-1 -ml-2"
+          title="Drag to reorder"
+        >
+          <GripVertical className="w-5 h-5" />
+        </span>
 
-      <button
-        id={`toggle-${todo.id}`}
-        className={`todo-item__checkbox${todo.completed ? ' todo-item__checkbox--checked' : ''}`}
-        onClick={() => onToggle(todo.id)}
-        aria-label={todo.completed ? 'Mark as incomplete' : 'Mark as complete'}
-        aria-checked={todo.completed}
-        role="checkbox"
-      >
-        {todo.completed && <span className="todo-item__checkbox-icon">✓</span>}
-      </button>
+        {/* Completion checkbox */}
+        <button
+          onClick={handleToggleClick}
+          className="flex-shrink-0 transition-colors mr-1"
+          aria-label={todo.status === 'completed' ? 'Mark incomplete' : 'Mark complete'}
+        >
+          {todo.status === 'completed' ? (
+            <CheckCircle2 className="w-6 h-6 text-emerald-500 fill-emerald-500/20" />
+          ) : todo.status === 'in-progress' ? (
+            <Clock className="w-6 h-6 text-blue-500 fill-blue-500/20" />
+          ) : (
+            <Circle className="w-6 h-6 text-slate-300 hover:text-indigo-500 dark:text-slate-600" />
+          )}
+        </button>
 
-      <div className="todo-item__body">
-        {editing ? (
-          <input
-            ref={inputRef}
-            className="todo-item__edit-input"
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            onBlur={handleEditSubmit}
-            onKeyDown={handleKeyDown}
-            aria-label="Edit task"
-          />
-        ) : (
-          <>
-            <span
-              className={`todo-item__text${todo.completed ? ' todo-item__text--done' : ''}`}
-              onDoubleClick={() => !todo.completed && setEditing(true)}
-              title="Double-click to edit"
-            >
-              {todo.text}
-            </span>
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onBlur={handleEditSubmit}
+              onKeyDown={handleKeyDown}
+              className="w-full px-2 py-1 text-sm rounded-lg bg-white/95 dark:bg-slate-900/95 border border-slate-300/80 dark:border-slate-700/80 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-indigo-500"
+            />
+          ) : (
+            <div className="space-y-1.5">
+              <div className="flex items-start justify-between gap-4">
+                <span
+                  onDoubleClick={() => todo.status !== 'completed' && setEditing(true)}
+                  className={`block text-base font-semibold leading-snug cursor-pointer transition-all break-words ${
+                    todo.status === 'completed'
+                      ? 'line-through text-slate-500 dark:text-slate-400 font-medium'
+                      : 'text-slate-800 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400'
+                  }`}
+                  title="Double-click to inline edit or click edit icon for full options"
+                >
+                  {todo.text}
+                </span>
 
-            {(dueLabel || reminderLabel) && (
-              <div className="todo-item__meta">
-                {dueLabel && <span className="todo-item__meta-chip">📅 {dueLabel}</span>}
-                {reminderLabel && <span className="todo-item__meta-chip">🔔 {reminderLabel}</span>}
+                {/* Due Date on Top Right */}
+                {todo.dueDate && (
+                  <span
+                    className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                      isOverdue 
+                        ? 'text-rose-600 border-rose-200 bg-rose-50 dark:bg-rose-500/10 dark:border-rose-500/20' 
+                        : 'text-slate-500 border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700'
+                    }`}
+                  >
+                    {isOverdue ? <AlertCircle className="w-3.5 h-3.5 text-rose-500" /> : <Calendar className="w-3.5 h-3.5 text-slate-400" />}
+                    <span>{new Date(todo.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  </span>
+                )}
               </div>
-            )}
-          </>
-        )}
+
+              {todo.description && (
+                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2 pr-8 break-words">
+                  {todo.description}
+                </p>
+              )}
+
+              {/* Badges & Meta Info Row */}
+              <div className="flex items-center gap-2 flex-wrap pt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                {/* Category Tag */}
+                <span className={`px-2.5 py-1 rounded-lg border font-bold ${categoryObj.color}`}>
+                  {categoryObj.name}
+                </span>
+
+                {/* Priority Badge */}
+                <span className={`px-2.5 py-1 rounded-lg border font-bold ${priorityObj.color}`}>
+                  {priorityObj.name}
+                </span>
+
+                {/* Subtask count */}
+                {subTotal > 0 && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                    <CheckSquare className="w-3 h-3 text-indigo-500" />
+                    <span>
+                      {subDone}/{subTotal}
+                    </span>
+                  </span>
+                )}
+
+
+
+                {/* Reminder */}
+                {todo.reminder && (
+                  <span className="flex items-center gap-1 text-slate-500">
+                    <Bell className="w-3 h-3 text-amber-500" />
+                    <span>{new Date(todo.reminder).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-1 sm:opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+          <button
+            onClick={() => onOpenTaskModal(todo)}
+            className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+            title="Edit details & subtasks"
+          >
+            <Edit3 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onDelete(todo.id)}
+            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+            title="Delete task"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
-
-      <span className={`priority-badge priority-badge--${todo.priority}`}>
-        {PRIORITY_LABELS[todo.priority]}
-      </span>
-
-      <button
-        id={`delete-${todo.id}`}
-        className="todo-item__delete"
-        onClick={() => onDelete(todo.id)}
-        aria-label={`Delete "${todo.text}"`}
-        title="Delete task"
-      >
-        <TrashIcon />
-      </button>
-    </li>
-  );
-}
-
-function DragIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <circle cx="4.5" cy="2.5" r="1.2" fill="currentColor" />
-      <circle cx="9.5" cy="2.5" r="1.2" fill="currentColor" />
-      <circle cx="4.5" cy="7" r="1.2" fill="currentColor" />
-      <circle cx="9.5" cy="7" r="1.2" fill="currentColor" />
-      <circle cx="4.5" cy="11.5" r="1.2" fill="currentColor" />
-      <circle cx="9.5" cy="11.5" r="1.2" fill="currentColor" />
-    </svg>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <polyline points="3 6 5 6 21 6" />
-      <path d="M19 6l-1 14H6L5 6" />
-      <path d="M10 11v6M14 11v6" />
-      <path d="M9 6V4h6v2" />
-    </svg>
+    </motion.li>
   );
 }
